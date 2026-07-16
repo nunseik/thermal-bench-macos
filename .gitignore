@@ -1,0 +1,13 @@
+# compiled load generator (build artifact — rebuilt by bench.sh)
+/soakload
+
+# generated report
+/report.html
+
+# run data (personal measurements)
+/runs/*.csv
+/runs/*.meta.json
+/runs/excluded/
+
+# macOS cruft
+.DS_Store
