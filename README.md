@@ -42,6 +42,23 @@ full load. The report flags the +0.3 °C as statistically "resolved" only becaus
 run-to-run scatter is ±0.1 °C — it is **practically negligible** and nowhere near
 any concern threshold. No adverse battery impact.
 
+**Surface matters — realistic vs ideal (both modded, on charger):** the mod moves
+heat into the bottom case, so how the bottom breathes changes the payoff. Re-tested
+on a stand with no fabric underneath and slight elevation (still fully passive):
+
+| Metric (sustained) | Modded on fabric | Modded on stand | Extra |
+|---|---|---|---|
+| SoC power | 17.8 ± 1.6 W | 18.9 ± 0.3 W | +6 % |
+| CPU P-core clock | 3440 ± 254 MHz | 3531 ± 71 MHz | +3 % |
+| CPU peak temp | 96.4 °C | 95.7 °C | −0.7 °C |
+
+So the everyday fabric-surface numbers are a **floor**; giving the bottom case room
+to breathe recovers a bit more. Stacking it up, on charger from stock to
+mod-on-a-stand: **SoC power +42 %, sustained P-core clock +32 %, CPU throughput
++16 %, peak temp −3.1 °C** — all while the machine stays fully passive (no fans).
+The tighter run-to-run scatter on the stand (±0.3 vs ±1.6 W) also suggests the
+fabric was adding variability, not just lowering the mean.
+
 ### Test conditions (realistic, not optimal)
 
 - MacBook Air M3 (8-core CPU / 8-core GPU, 16 GB), macOS 26.5, **Low Power Mode OFF**.
