@@ -125,7 +125,18 @@ def main():
     if not paths:
         sys.exit("no run CSVs found in runs/ — do a run first: ./bench.sh baseline")
 
+    MIN_SAMPLES = 30  # skip empty/aborted stubs that never reached steady state
     runs = [load_run(p) for p in paths]
+    short = [r for r in runs if len(r["rows"]) < MIN_SAMPLES]
+    runs = [r for r in runs if len(r["rows"]) >= MIN_SAMPLES]
+    if short:
+        print("⚠ skipping " + str(len(short)) + " short/empty run(s) "
+              f"(< {MIN_SAMPLES} samples):")
+        for r in short:
+            print(f"    {r['file']}  ({len(r['rows'])} samples)")
+    if not runs:
+        sys.exit("no usable runs left after skipping short files.")
+
     # group by label, preserving order but forcing a 'baseline'-ish label first
     order = []
     for r in runs:
