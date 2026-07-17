@@ -26,28 +26,41 @@ LABEL="${1:?usage: ./campaign.sh <label> [reps] [duration_s] [mode] [cooldown_C]
 REPS="${2:-3}"
 DURATION="${3:-900}"
 MODE="${4:-both}"
-COOL="${5:-45}"
-COOL_TIMEOUT=720   # give up waiting to cool after 12 min
+COOL="${5:-42}"       # target smoothed idle CPU °C
+MIN_COOLDOWN="${MIN_COOLDOWN:-360}"  # ALWAYS cool at least this long. cpu_temp_avg is
+                      # the core-junction temp, which collapses within ~1s of load
+                      # ending while the chassis/package stays heat-soaked — so a
+                      # bare temperature threshold starts the next run far too early.
+                      # This floor covers the chassis the sensor can't see.
+COOL_TIMEOUT="${COOL_TIMEOUT:-1200}" # ...but never wait more than this
 
 command -v macmon >/dev/null || { echo "macmon not found — brew install macmon" >&2; exit 1; }
 
-cpu_temp() {  # one macmon sample → CPU avg °C
-  macmon pipe -s 1 -i 400 2>/dev/null \
-    | python3 -c 'import sys,json; print(json.loads(sys.stdin.readline())["temp"]["cpu_temp_avg"])' 2>/dev/null \
-    || echo 999
+cpu_temp() {  # 5-sample (≈5s) mean of CPU temp — idle reading is noisy (±3°C)
+  macmon pipe -s 5 -i 1000 2>/dev/null | python3 -c '
+import sys, json
+v = [json.loads(l)["temp"]["cpu_temp_avg"] for l in sys.stdin if l.strip()]
+print(round(sum(v)/len(v), 1) if v else 999)
+' 2>/dev/null || echo 999
 }
 
 wait_cool() {
-  local target="$1" start=$SECONDS t
+  # Reset = smoothed idle temp ≤ target AND plateaued (2 consecutive polls below
+  # target) AND at least MIN_COOLDOWN elapsed. Belt-and-suspenders because no
+  # sensor exposes chassis/skin temperature.
+  local target="$1" start=$SECONDS t below=0 el
+  echo "  cooling (min ${MIN_COOLDOWN}s; then until CPU ≤ ${target}°C and steady)…"
   while :; do
-    t=$(cpu_temp)
-    printf "\r  cooling: CPU %5.1f°C  (target ≤ %s°C, %ds elapsed)   " "$t" "$target" "$((SECONDS-start))"
-    if awk "BEGIN{exit !($t <= $target)}"; then printf "\n"; return; fi
-    if (( SECONDS - start > COOL_TIMEOUT )); then
-      printf "\n  ⚠ still %.1f°C after %ds — starting anyway (note the warm start)\n" "$t" "$COOL_TIMEOUT"
-      return
+    t=$(cpu_temp); el=$((SECONDS-start))
+    printf "\r  cooling: CPU %5.1f°C  (%ds elapsed)          " "$t" "$el"
+    if awk "BEGIN{exit !($t <= $target)}"; then below=$((below+1)); else below=0; fi
+    if (( el >= MIN_COOLDOWN && below >= 2 )); then
+      printf "\n  ✓ reset at %.1f°C after %ds\n" "$t" "$el"; return
     fi
-    sleep 5
+    if (( el > COOL_TIMEOUT )); then
+      printf "\n  ⚠ still %.1f°C after %ds — starting anyway (warm start; note it)\n" "$t" "$el"; return
+    fi
+    sleep 10
   done
 }
 
