@@ -15,6 +15,23 @@ aluminium bottom acts as a larger heat spreader. Measured with this tool —
 3 runs per condition (2 for the on-battery baseline), 15-minute combined
 CPU+GPU soaks, last-quarter = thermal steady state, `± =` run-to-run SD.
 
+> **⚠ Measurement caveat (data collected before commit `c342666`).** These runs
+> used an earlier campaign cooldown that gated on `cpu_temp_avg` — the core-*junction*
+> temperature, which collapses ~30 °C within a second of load ending while the chassis
+> stays heat-soaked. As a result, the 2nd/3rd rep of each campaign started warm
+> (~60-66 °C, not ~45 °C), and a warmer start lowered that run's sustained figures.
+> **What this means for the numbers below:**
+> - The **core conclusion is unaffected**: the *worst* modded run still beats the *best*
+>   baseline run on both AC and battery, and a clean cold-start-vs-cold-start comparison
+>   gives **+34 % power / +34 % clock** on charger.
+> - The **± scatter is overstated** — most of it is warm-start drift between reps, not
+>   true run-to-run noise; the real reproducibility is tighter.
+> - The **"surface +6 %" figure is largely an artifact** (see that section).
+>
+> The cooldown is now fixed (min-cooldown floor + smoothed/plateau'd temp). These
+> results are kept as-is for honesty; re-running with the fix would sharpen the
+> magnitudes but is not expected to change the conclusion.
+
 **Sustained (steady-state) performance:**
 
 | Metric | Baseline | Modded | Change |
@@ -46,18 +63,20 @@ any concern threshold. No adverse battery impact.
 heat into the bottom case, so how the bottom breathes changes the payoff. Re-tested
 on a stand with no fabric underneath and slight elevation (still fully passive):
 
-| Metric (sustained) | Modded on fabric | Modded on stand | Extra |
-|---|---|---|---|
-| SoC power | 17.8 ± 1.6 W | 18.9 ± 0.3 W | +6 % |
-| CPU P-core clock | 3440 ± 254 MHz | 3531 ± 71 MHz | +3 % |
-| CPU peak temp | 96.4 °C | 95.7 °C | −0.7 °C |
+| Metric (sustained) | Modded on fabric | Modded on stand |
+|---|---|---|
+| SoC power — group mean | 17.8 ± 1.6 W | 18.9 ± 0.3 W |
+| SoC power — **cold-start run only** | **19.4 W** | **19.3 W** |
+| CPU peak temp | 96.4 °C | 95.7 °C |
 
-So the everyday fabric-surface numbers are a **floor**; giving the bottom case room
-to breathe recovers a bit more. Stacking it up, on charger from stock to
-mod-on-a-stand: **SoC power +42 %, sustained P-core clock +32 %, CPU throughput
-+16 %, peak temp −3.1 °C** — all while the machine stays fully passive (no fans).
-The tighter run-to-run scatter on the stand (±0.3 vs ±1.6 W) also suggests the
-fabric was adding variability, not just lowering the mean.
+**This is where the cooldown caveat bites.** The group-mean gap (17.8 vs 18.9 W)
+originally read as "+6 % from better ventilation" — but that's mostly the warm-start
+artifact. On a **clean cold start the ceilings are identical** (19.4 vs 19.3 W): the
+fabric does **not** lower the peak capability. What differs is heat-soak tolerance —
+fabric's warm reps collapsed harder (rep 3: 15.7 W) while the stand's held up
+(rep 3: 18.7 W). So the honest takeaway is: *the fabric doesn't cost you peak
+performance, but it makes sustained back-to-back use more prone to heat-soak decline.*
+A clean re-run with the fixed cooldown would settle the size of that effect.
 
 ### Test conditions (realistic, not optimal)
 
